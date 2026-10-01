@@ -57,3 +57,12 @@ Tracked claims live in `data/claims.db` (built-in `node:sqlite`), gitignored.
 Some states allow licensed finders to charge a small statutory commission —
 but you can always file yourself for free. Never pay anyone a percentage to
 do what your state does for nothing.
+
+## CSV export / import
+
+The tracker toolbar exports all claims as CSV (`item, state, url,
+value_usd, status, notes`) and imports them back — quotes, embedded
+commas and escaped quotes handled per RFC-4180-ish rules; invalid rows
+(item < 2 chars, non-http url) are skipped with a count. Works
+identically in node and static modes (static imports land in
+localStorage).

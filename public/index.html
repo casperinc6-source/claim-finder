@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ClaimFinder — official unclaimed money & surplus auctions</title>
+<style>
+  :root {
+    --navy: #080B16; --cyan: #4FD8FF; --ice: #E8F4FF;
+    --slate: #253549; --ink: #04070D; --dim: #8FA3B8;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body { background: var(--navy); color: var(--ice); font-family: 'SF Pro Text', -apple-system, 'Segoe UI', sans-serif; line-height: 1.5; }
+  .mono { font-family: 'IBM Plex Mono', ui-monospace, 'Cascadia Mono', monospace; }
+
+  /* menubar */
+  .menubar {
+    position: sticky; top: 0; z-index: 10;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: .7rem 1.4rem;
+    background: rgba(8, 11, 22, .72); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(79, 216, 255, .14);
+  }
+  .menubar .brand { font-weight: 700; letter-spacing: .12em; }
+  .menubar .brand b { color: var(--cyan); }
+  .menubar .right { display: flex; gap: 1rem; align-items: center; font-size: .8rem; color: var(--dim); }
+  .dot { color: #4ade80; animation: pulse 2.2s infinite; }
+  @keyframes pulse { 50% { opacity: .35; } }
+
+  /* layout */
+  section { max-width: 1060px; margin: 0 auto; padding: 4rem 1.4rem 0; }
+  h1 { font-size: clamp(2rem, 5vw, 3.2rem); line-height: 1.08; letter-spacing: -.02em; max-width: 18ch; }
+  h1 b { color: var(--cyan); }
+  .sub { color: var(--dim); max-width: 60ch; margin-top: 1rem; }
+  h2 { font-size: 1.5rem; margin-bottom: .4rem; }
+  h2 .tag { font-size: .72rem; letter-spacing: .18em; color: var(--cyan); display: block; margin-bottom: .35rem; }
+
+  .statbar {
+    display: flex; gap: .8rem; flex-wrap: wrap; margin-top: 2rem;
+  }
+  .statbar .cell {
+    border: 1px solid var(--slate); border-radius: 12px; padding: .8rem 1.1rem; min-width: 140px;
+  }
+  .statbar .num { font-size: 1.4rem; font-weight: 700; color: var(--cyan); }
+  .statbar .lbl { font-size: .74rem; color: var(--dim); letter-spacing: .08em; text-transform: uppercase; }
+
+  .legit {
+    margin-top: 2rem; border: 1px solid rgba(79, 216, 255, .35); border-left: 4px solid var(--cyan);
+    border-radius: 10px; padding: 1rem 1.2rem; background: rgba(79, 216, 255, .05); font-size: .92rem;
+  }
+  .legit b { color: var(--cyan); }
+
+  /* search */
+  .searchrow { display: flex; gap: .8rem; margin: 1.4rem 0 1.2rem; flex-wrap: wrap; }
+  input[type="search"], input[type="text"], input[type="number"], input[type="url"], select, textarea {
+    background: var(--ink); color: var(--ice); border: 1px solid var(--slate); border-radius: 10px;
+    padding: .65rem .9rem; font: inherit; outline: none; min-width: 0;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--cyan); box-shadow: 0 0 0 3px rgba(79, 216, 255, .15); }
+  #q { flex: 1 1 260px; }
+
+  /* state grid */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: .7rem; }
+  .state {
+    display: block; border: 1px solid var(--slate); border-radius: 12px; padding: .8rem .9rem;
+    text-decoration: none; color: var(--ice); transition: border-color .15s, transform .15s, box-shadow .15s;
+  }
+  .state:hover { border-color: var(--cyan); transform: translateY(-2px); box-shadow: 0 6px 18px rgba(79, 216, 255, .12); }
+  .state .code { font-size: .7rem; color: var(--dim); letter-spacing: .14em; }
+  .state .name { font-weight: 600; font-size: .95rem; }
+  .state .go { color: var(--cyan); font-size: .78rem; }
+  .mm { margin-top: 1.2rem; font-size: .9rem; color: var(--dim); }
+  .mm a, .auction a { color: var(--cyan); }
+
+  /* auctions */
+  .auctions { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: .9rem; }
+  .auction { border: 1px solid var(--slate); border-radius: 14px; padding: 1.1rem 1.2rem; }
+  .auction h3 { font-size: 1.02rem; margin-bottom: .3rem; }
+  .auction p { color: var(--dim); font-size: .88rem; margin: .4rem 0 .7rem; }
+
+  /* tracker */
+  .tform { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: .7rem; margin: 1.2rem 0; }
+  .tform .full { grid-column: 1 / -1; }
+  .tform label { display: flex; flex-direction: column; gap: .3rem; font-size: .78rem; color: var(--dim); letter-spacing: .06em; text-transform: uppercase; }
+  button.cta {
+    border: 0; border-radius: 999px; padding: .7rem 1.6rem; font-weight: 700; cursor: pointer;
+    background: var(--cyan); color: var(--ink); box-shadow: 0 0 18px rgba(79, 216, 255, .35);
+  }
+  button.cta:hover { filter: brightness(1.08); }
+  .ghost { background: transparent; border: 1px solid var(--slate); color: var(--ice); box-shadow: none; border-radius: 999px; padding: .55rem 1.1rem; cursor: pointer; }
+  .ghost:hover { border-color: var(--cyan); color: var(--cyan); }
+
+  table { width: 100%; border-collapse: collapse; margin-top: .6rem; font-size: .9rem; }
+  th, td { text-align: left; padding: .6rem .5rem; border-bottom: 1px solid var(--slate); vertical-align: top; }
+  th { color: var(--dim); font-size: .72rem; letter-spacing: .1em; text-transform: uppercase; }
+  td select { padding: .3rem .5rem; font-size: .82rem; }
+  td .del { color: var(--dim); background: none; border: 0; cursor: pointer; font-size: 1rem; }
+  td .del:hover { color: #f87171; }
+  td a { color: var(--cyan); text-decoration: none; }
+  td a:hover { text-decoration: underline; }
+  .empty { color: var(--dim); padding: 1.2rem 0; }
+  .status-paid { color: #4ade80; } .status-waiting { color: #fbbf24; }
+  .status-filed { color: var(--cyan); } .status-closed { color: var(--dim); }
+
+  footer { max-width: 1060px; margin: 4rem auto 0; padding: 2rem 1.4rem 3rem; border-top: 1px solid var(--slate); color: var(--dim); font-size: .8rem; }
+  footer b { color: var(--ice); }
+  @media (max-width: 560px) { section { padding-top: 3rem; } }
+</style>
+</head>
+<body>
+
+<header class="menubar mono">
+  <div class="brand">CLAIM<b>FINDER</b></div>
+  <div class="right"><span class="dot">●</span> LIVE <span id="clock">--:--</span></div>
+</header>
+
+<section id="top">
+  <h1>Money and property <b>already owed to people.</b> Official sources only.</h1>
+  <p class="sub">A directory of every U.S. state's <b>official</b> unclaimed-property program, plus the government auction sites that legitimately sell abandoned cars, surplus gear, and seized real estate. Claiming through state programs is always <b>free</b> — this app never charges, never takes a cut, and never asks for personal data.</p>
+
+  <div class="statbar mono">
+    <div class="cell"><div class="num" id="st-states">51</div><div class="lbl">official state programs</div></div>
+    <div class="cell"><div class="num" id="st-auctions">6</div><div class="lbl">auction sources</div></div>
+    <div class="cell"><div class="num">$0</div><div class="lbl">fees. ever.</div></div>
+    <div class="cell"><div class="num" id="st-tracked">0</div><div class="lbl">claims tracked</div></div>
+    <div class="cell"><div class="num" id="st-value">$0</div><div class="lbl">tracked value</div></div>
+  </div>
+
+  <div class="legit">
+    <b>The honest version of "free money":</b> states hold billions in dormant bank accounts, uncashed paychecks, and old deposits — and by law must return them, free, to whoever proves ownership. There is no trick, no bot, and no paid service needed. Beware anyone charging you a % to do what your state does free; a handful of states allow small finder commissions, but you can always file yourself for nothing.
+  </div>
+</section>
+
+<section id="states">
+  <h2><span class="tag mono">01 / DIRECTORY</span>Unclaimed money — all 50 states + DC</h2>
+  <p class="sub">Each card links straight to the official state program. Check every state you've lived or done business in — property is held where the company was, not where you are.</p>
+  <div class="searchrow">
+    <input id="q" type="search" placeholder="Search a state… e.g. Texas, CA, York" autocomplete="off">
+    <a class="ghost mono" style="text-decoration:none;line-height:1.4" href="https://www.missingmoney.com/" target="_blank" rel="noopener">Multi-state search ↗</a>
+  </div>
+  <div class="grid" id="grid"></div>
+  <p class="mm">Link broken? The <a href="https://unclaimed.org/search/" target="_blank" rel="noopener">NAUPA master finder</a> routes to every official program.</p>
+</section>
+
+<section id="auctions">
+  <h2><span class="tag mono">02 / AUCTIONS</span>Abandoned cars, surplus & seized property — the legal way</h2>
+  <p class="sub">You can't just claim an abandoned car or house — cities tow and auction them, and courts sell seized property. That's the legitimate door in: bid at official government auctions, often far below market.</p>
+  <div class="auctions" id="auction-grid"></div>
+</section>
+
+<section id="tracker">
+  <h2><span class="tag mono">03 / TRACKER</span>Your claim pipeline</h2>
+  <p class="sub">Found a match? Track it here — statuses move from researching → filed → waiting → paid. Stored locally in SQLite on this machine, nothing leaves it.</p>
+
+  <form class="tform" id="tform">
+    <label>Item / who it's for
+      <input type="text" id="f-item" placeholder="Grandma's CA bank account" required minlength="2">
+    </label>
+    <label>State
+      <input type="text" id="f-state" placeholder="CA" maxlength="40">
+    </label>
+    <label>Program URL
+      <input type="url" id="f-url" placeholder="https://ucpi.sco.ca.gov/" required>
+    </label>
+    <label>Est. value ($)
+      <input type="number" id="f-value" placeholder="250" min="0" step="0.01">
+    </label>
+    <label>Notes <span style="text-transform:none;letter-spacing:0">(optional)</span>
+      <input type="text" id="f-notes" placeholder="Filed 3/12, need death certificate">
+    </label>
+    <div class="full" style="display:flex;justify-content:flex-end">
+      <button class="cta" type="submit">Add claim</button>
+    </div>
+  </form>
+
+  <table>
+    <thead><tr><th>Item</th><th>State</th><th>Link</th><th>Value</th><th>Status</th><th></th></tr></thead>
+    <tbody id="tbody"><tr><td colspan="6" class="empty">No claims tracked yet — add one above.</td></tr></tbody>
+  </table>
+</section>
+
+<footer>
+  <p><b>ClaimFinder</b> is a free, open-source directory. It stores only what you type into the tracker, on your own machine. It is not affiliated with any government agency. Verify everything on the official pages linked above.</p>
+</footer>
+
+<script>
+'use strict';
+
+// ---------- clock ----------
+const clockEl = document.getElementById('clock');
+const tick = () => { clockEl.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); };
+tick(); setInterval(tick, 15000);
+
+// ---------- state directory ----------
+let STATES = [];
+const grid = document.getElementById('grid');
+const q = document.getElementById('q');
+
+function renderStates() {
+  const needle = q.value.trim().toLowerCase();
+  const rows = STATES.filter(([code, name]) =>
+    !needle || name.toLowerCase().includes(needle) || code.toLowerCase().includes(needle));
+  grid.innerHTML = rows.map(([code, name, url]) =>
+    `<a class="state" href="${url}" target="_blank" rel="noopener">
+       <div class="code mono">${code}</div>
+       <div class="name">${name}</div>
+       <div class="go">official program ↗</div>
+     </a>`).join('') || '<p class="empty">No state matches — try the multi-state search.</p>';
+}
+q.addEventListener('input', renderStates);
+
+// ---------- auctions ----------
+const AUCTIONS = [
+  ['GovDeals', 'https://www.govdeals.com/en/automobiles-cars', 'The big municipal marketplace: city and county surplus, abandoned/impounded vehicles, heavy equipment. Most US cities sell here.'],
+  ['GSA Auctions', 'https://gsaauctions.gov/', 'Federal fleet + seized property: cars, trucks, boats, aircraft, real estate.'],
+  ['USA.gov vehicle hub', 'https://www.usa.gov/car-auctions', "The government's own index of vehicle auction sources — start here to find your state's program."],
+  ['USA.gov all sales', 'https://www.usa.gov/government-sales', 'Official index of every government sale: houses, land, jewelry, vehicles, seized goods.'],
+  ['State consumer offices', 'https://www.usa.gov/state-consumer', 'Every state consumer office links to local impound/surplus sales. Scroll to your state.'],
+  ['Treasury auctions', 'https://www.treasurerauctions.net/', 'IRS/US Treasury seized real estate and personal property — court-ordered sales only.'],
+];
+document.getElementById('auction-grid').innerHTML = AUCTIONS.map(([name, url, desc]) =>
+  `<div class="auction">
+     <h3><a href="${url}" target="_blank" rel="noopener">${name} ↗</a></h3>
+     <p>${desc}</p>
+   </div>`).join('');
+
+// ---------- tracker ----------
+const tbody = document.getElementById('tbody');
+const tform = document.getElementById('tform');
+const money = (c) => (c / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 });
+
+async function loadClaims() {
+  const claims = await fetch('/api/claims').then((r) => r.json());
+  if (!claims.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty">No claims tracked yet — add one above.</td></tr>';
+  } else {
+    tbody.innerHTML = claims.map((c) => `
+      <tr>
+        <td><b>${esc(c.item)}</b>${c.notes ? `<div style="color:var(--dim);font-size:.8rem">${esc(c.notes)}</div>` : ''}</td>
+        <td class="mono">${esc(c.state || '—')}</td>
+        <td><a href="${esc(c.url)}" target="_blank" rel="noopener">open ↗</a></td>
+        <td class="mono">${money(c.value_cents)}</td>
+        <td><select data-id="${c.id}" class="status status-${c.status}">
+              ${['researching', 'filed', 'waiting', 'paid', 'closed'].map((s) =>
+                `<option value="${s}"${s === c.status ? ' selected' : ''}>${s}</option>`).join('')}
+            </select></td>
+        <td><button class="del" data-id="${c.id}" title="delete">✕</button></td>
+      </tr>`).join('');
+  }
+  const total = claims.reduce((s, c) => s + (c.value_cents || 0), 0);
+  document.getElementById('st-tracked').textContent = claims.length;
+  document.getElementById('st-value').textContent = money(total);
+}
+
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+}
+
+tbody.addEventListener('change', async (e) => {
+  const sel = e.target.closest('select.status');
+  if (!sel) return;
+  await fetch('/api/claims/' + sel.dataset.id, {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status: sel.value }),
+  });
+  loadClaims();
+});
+
+tbody.addEventListener('click', async (e) => {
+  const del = e.target.closest('button.del');
+  if (!del) return;
+  await fetch('/api/claims/' + del.dataset.id, { method: 'DELETE' });
+  loadClaims();
+});
+
+tform.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const body = {
+    item: document.getElementById('f-item').value,
+    state: document.getElementById('f-state').value,
+    url: document.getElementById('f-url').value,
+    value: Number(document.getElementById('f-value').value || 0),
+    notes: document.getElementById('f-notes').value,
+  };
+  const res = await fetch('/api/claims', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (res.ok) { tform.reset(); loadClaims(); }
+  else alert('Could not save: ' + ((await res.json()).error || res.status));
+});
+
+// ---------- boot ----------
+(async () => {
+  const data = await fetch('/api/states').then((r) => r.json());
+  STATES = data.states;
+  document.getElementById('st-states').textContent = data.count;
+  document.getElementById('st-auctions').textContent = data.auctions.length;
+  renderStates();
+})();
+loadClaims();
+</script>
+</body>
+</html>

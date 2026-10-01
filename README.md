@@ -19,6 +19,21 @@ hubs). You can't just *claim* an abandoned car — cities tow and auction it.
 
 Zero dependencies. `npm start` → http://localhost:3007
 
+## Static mode (GitHub Pages)
+
+The same page also runs with **no backend**: https://casperinc6-source.github.io/claim-finder/
+
+It tries the SQLite API first; if that's absent it falls back to
+`states.json` and stores tracker claims in browser localStorage (with a
+one-time "static mode" banner). The directory works identically in both
+modes.
+
+`docs/` is the Pages copy — after changing `public/index.html` or
+`sources.js`, regenerate it:
+
+    node -e "const {STATES,AUCTIONS,NAUPA,MISSINGMONEY}=require('./sources.js');\n      require('fs').writeFileSync('public/states.json',JSON.stringify({generated:new Date().toISOString(),source:'official NAUPA finder (https://unclaimed.org/search/)',states:STATES.map(([c,n,u])=>[c,n,u]),auctions:AUCTIONS,naupa:NAUPA,missingmoney:MISSINGMONEY},null,2)+'\n')"
+    cp public/index.html public/states.json docs/
+
 ## API
 
 - `GET  /api/states` — all 51 programs + auction sources + NAUPA fallback
